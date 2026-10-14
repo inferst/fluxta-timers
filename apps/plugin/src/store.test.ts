@@ -1,0 +1,134 @@
+import { describe, expect, it, vi } from "vitest";
+
+import { SettingsStore, type StoredSettings } from "./store";
+
+function storeWithWrites() {
+  const writes: StoredSettings[] = [];
+  const onChange = vi.fn();
+  const store = new SettingsStore(
+    {
+      setPluginSettings: async (settings) => {
+        writes.push(structuredClone(settings));
+      },
+    },
+    onChange,
+  );
+  return { store, writes, onChange };
+}
+
+describe("SettingsStore", () => {
+  it("loads the persisted Stopwatches and language", async () => {
+    const { store } = storeWithWrites();
+    const onAir = {
+      id: "s1",
+      name: "On air",
+      timing: { state: "running", accumulatedMs: 0, runningSince: 1_000 },
+    };
+
+    store.load({ language: "ru", stopwatches: [onAir] });
+
+    await expect(store.loaded).resolves.toBeUndefined();
+    expect(store.language()).toBe("ru");
+    expect(store.stopwatch("s1")).toEqual(onAir);
+  });
+
+  it("starts empty, in English, when nothing was ever saved", () => {
+    const { store } = storeWithWrites();
+
+    store.load(null);
+
+    expect(store.language()).toBe("en");
+    expect(store.stopwatches()).toEqual([]);
+  });
+
+  it("drops what it cannot read instead of failing the load", () => {
+    const { store } = storeWithWrites();
+
+    store.load({
+      language: "de",
+      stopwatches: [
+        { id: "s1", name: "On air", timing: { state: "idle" } },
+        { id: "s2", name: "Broken", timing: { state: "stopped" } },
+        "nonsense",
+      ],
+    });
+
+    expect(store.language()).toBe("en");
+    expect(store.stopwatches().map((stopwatch) => stopwatch.id)).toEqual([
+      "s1",
+    ]);
+  });
+
+  it("persists the whole settings on every change and reports it", async () => {
+    const { store, writes, onChange } = storeWithWrites();
+    store.load({});
+
+    await store.addStopwatch("s1", "  On air ");
+    await store.setTiming("s1", { state: "paused", accumulatedMs: 5_000 });
+    await store.renameStopwatch("s1", "Live");
+    await store.setLanguage("ru");
+    await store.removeStopwatch("s1");
+
+    expect(writes).toEqual([
+      {
+        language: "en",
+        stopwatches: [{ id: "s1", name: "On air", timing: { state: "idle" } }],
+      },
+      {
+        language: "en",
+        stopwatches: [
+          {
+            id: "s1",
+            name: "On air",
+            timing: { state: "paused", accumulatedMs: 5_000 },
+          },
+        ],
+      },
+      {
+        language: "en",
+        stopwatches: [
+          {
+            id: "s1",
+            name: "Live",
+            timing: { state: "paused", accumulatedMs: 5_000 },
+          },
+        ],
+      },
+      {
+        language: "ru",
+        stopwatches: [
+          {
+            id: "s1",
+            name: "Live",
+            timing: { state: "paused", accumulatedMs: 5_000 },
+          },
+        ],
+      },
+      { language: "ru", stopwatches: [] },
+    ]);
+    expect(onChange).toHaveBeenCalledTimes(5);
+  });
+
+  it("holds a change in memory before the save finishes", () => {
+    const { store } = storeWithWrites();
+    store.load({});
+
+    void store.addStopwatch("s1", "On air");
+
+    expect(store.stopwatch("s1")?.name).toBe("On air");
+  });
+
+  it("keeps a change when the save fails", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const store = new SettingsStore({
+      setPluginSettings: () => Promise.reject(new Error("disk full")),
+    });
+    store.load({});
+
+    await expect(store.addStopwatch("s1", "On air")).resolves.toBeUndefined();
+
+    expect(store.stopwatch("s1")).toBeDefined();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("disk full"));
+    warn.mockRestore();
+  });
+});
