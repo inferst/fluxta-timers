@@ -11,15 +11,15 @@ import { validateName } from "./names";
  * fires as soon as the plugin is back.
  *
  * A running countdown is in its `cycle`th cycle (from 1). `scheduledAt` is
- * that cycle's place on the schedule — Start's moment plus `cycle` times
- * `intervalMs` — and `dueAt` its Due Time, the same unless Add Time moved
- * it. The next cycle follows `scheduledAt`, never the moment a cycle fired,
- * so a repeating Timer does not drift. `lastCycle` is the cycle after which
- * it stops: 1 for a one-shot Timer, `null` for one that repeats until
- * cancelled.
+ * that cycle's place on the schedule and `dueAt` its Due Time, the same
+ * unless Add Time moved it. The next cycle follows `scheduledAt`, never the
+ * moment a cycle fired, so a repeating Timer does not drift.
  *
- * Everything the schedule needs is taken from the Timer at Start, so a
- * Timer edited in the Plugin Editor goes on counting as it was started.
+ * Whether there is a next cycle, and how far ahead, is read from the Timer
+ * each time a cycle fires — so a Timer edited in the Plugin Editor while it
+ * runs keeps the current cycle's Due Time and follows its new settings from
+ * the next one. Only a duration a step gave at Start (`stepDurationMs`)
+ * belongs to the countdown: the Timer repeats it until the next Start.
  */
 export type Countdown =
   | { state: "idle" }
@@ -28,8 +28,7 @@ export type Countdown =
       cycle: number;
       scheduledAt: number;
       dueAt: number;
-      intervalMs: number;
-      lastCycle: number | null;
+      stepDurationMs: number | null;
     };
 
 export type RunningCountdown = Extract<Countdown, { state: "running" }>;
@@ -89,8 +88,7 @@ export const CountdownSchema = z.discriminatedUnion("state", [
       cycle: CycleSchema,
       scheduledAt: z.number().finite(),
       dueAt: z.number().finite(),
-      intervalMs: DurationMsSchema,
-      lastCycle: CycleSchema.nullable(),
+      stepDurationMs: DurationMsSchema.nullable(),
     })
     .refine(({ scheduledAt, dueAt }) => dueAt >= scheduledAt),
 ]);
@@ -105,24 +103,42 @@ export const TimerSchema = z.object({
   countdown: CountdownSchema,
 });
 
+/** What a running countdown reads from its Timer each time a cycle fires. */
+export type TimerSchedule = Pick<Timer, "durationMs" | "repeat" | "maxTimes">;
+
+/** How long each cycle of `countdown` lasts: a step's duration, or the Timer's. */
+export function intervalOf(
+  timer: TimerSchedule,
+  countdown: RunningCountdown,
+): number {
+  return countdown.stepDurationMs ?? timer.durationMs;
+}
+
 /**
- * The first cycle of a countdown started at `now`, counting `intervalMs` —
- * the Timer's own duration unless a step gave another.
+ * The cycle after which a Timer stops: 1 unless it repeats, `null` while it
+ * repeats until cancelled.
+ */
+export function lastCycleOf(timer: TimerSchedule): number | null {
+  return timer.repeat ? timer.maxTimes : 1;
+}
+
+/**
+ * The first cycle of a countdown started at `now`, counting
+ * `stepDurationMs` when a step gave one, or else the Timer's own duration.
  */
 export function startCountdown(
-  timer: Pick<Timer, "durationMs" | "repeat" | "maxTimes">,
+  timer: TimerSchedule,
   now: number,
-  intervalMs: number = timer.durationMs,
+  stepDurationMs?: number,
 ): RunningCountdown {
-  const dueAt = now + intervalMs;
+  const dueAt = now + (stepDurationMs ?? timer.durationMs);
 
   return {
     state: "running",
     cycle: 1,
     scheduledAt: dueAt,
     dueAt,
-    intervalMs,
-    lastCycle: timer.repeat ? timer.maxTimes : 1,
+    stepDurationMs: stepDurationMs ?? null,
   };
 }
 
@@ -134,12 +150,14 @@ export function startCountdown(
  * pushed the current one past the next. They fire once, for the latest of
  * them: `count` is that cycle, `missed` the cycles before it that never
  * fired, and `lateMs` how long after its Due Time it fires. Cycles beyond
- * `lastCycle` never fall due.
+ * the Timer's last never fall due — and when the Timer was edited to stop
+ * sooner than the cycle under way, that cycle is its last.
  *
  * Then the countdown goes on to the first cycle still ahead on the schedule,
- * or is idle once its last cycle has fired.
+ * as the Timer now says, or is idle once its last cycle has fired.
  */
 export function elapse(
+  timer: TimerSchedule,
   countdown: RunningCountdown,
   now: number,
 ): {
@@ -148,7 +166,9 @@ export function elapse(
   lateMs: number;
   next: Countdown;
 } {
-  const { cycle, scheduledAt, intervalMs, lastCycle } = countdown;
+  const { cycle, scheduledAt } = countdown;
+  const intervalMs = intervalOf(timer, countdown);
+  const lastCycle = lastCycleOf(timer);
   const passed = Math.max(0, Math.floor((now - scheduledAt) / intervalMs));
   const count =
     lastCycle === null

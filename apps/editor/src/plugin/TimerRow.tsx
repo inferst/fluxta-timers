@@ -8,8 +8,8 @@ import {
 import { useState } from "react";
 import {
   formatDuration,
+  lastCycleOf,
   remainingMs,
-  type Countdown,
   type EditorMessage,
   type Timer,
   type TimerState,
@@ -54,7 +54,7 @@ export function TimerRow({ timer, timers, send }: Props) {
           left === undefined
             ? describeTimer(timer)
             : // Rounded up, as a countdown reads: 0:00 only once it fires.
-              `${formatDuration(Math.ceil(left / 1000) * 1000)} left${describeCycle(timer.countdown)}`
+              `${formatDuration(Math.ceil(left / 1000) * 1000)} left${describeCycle(timer)}`
         }
         actions={
           <>
@@ -110,12 +110,15 @@ function describeTimer(timer: Timer): string {
 }
 
 /** Where a repeating countdown stands in its schedule, or nothing. */
-function describeCycle(countdown: Countdown): string {
-  if (countdown.state !== "running" || countdown.lastCycle === 1) {
+function describeCycle(timer: Timer): string {
+  const { countdown } = timer;
+  const lastCycle = lastCycleOf(timer);
+
+  if (countdown.state !== "running" || lastCycle === 1) {
     return "";
   }
 
-  return countdown.lastCycle === null
+  return lastCycle === null
     ? `, cycle ${countdown.cycle}`
-    : `, cycle ${countdown.cycle} of ${countdown.lastCycle}`;
+    : `, cycle ${countdown.cycle} of ${Math.max(countdown.cycle, lastCycle)}`;
 }

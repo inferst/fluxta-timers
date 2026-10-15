@@ -22,8 +22,10 @@ Plugin Editor with its name, its duration, its Repeated Start and whether it
 repeats (and at most how many times); persisted in Plugin settings, and
 picked by its id in steps, conditions and Event Filters. Steps can start it
 (for its own duration or one the step gives), cancel it, and add time to
-it. What a Start takes from the Timer holds until the next Start: editing a
-running Timer does not change its countdown. A step, a condition or a
+it. Editing a running Timer leaves the Cycle under way to end when it was
+due; its next Cycle, and whether there is one, follow the Timer as edited —
+so a Timer that no longer repeats stops after the current Cycle. A step, a
+condition or a
 filter pointed at a deleted Timer does nothing, and a deleted Timer never
 fires.
 _Avoid_: countdown (what a running Timer does, not what it is), alarm,
@@ -78,8 +80,9 @@ _Avoid_: timer finished, timeout.
 **Duration**:
 How long a Timer counts down, or how much Add Time adds: seconds (`900`) or
 a clock time (`15:00`, `1:30:00` — the shape of a Stopwatch's Elapsed), more
-than zero and at most 7 days. A repeating Timer repeats the duration it was
-started with. A step's duration may be a `{{…}}` reference; one that does
+than zero and at most 7 days. A repeating Timer repeats a duration the Start
+step gave until the next Start; otherwise its own, as it stands at each
+Cycle. A step's duration may be a `{{…}}` reference; one that does
 not come out as a duration makes Start count the Timer's own, and Add Time
 add nothing.
 

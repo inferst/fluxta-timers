@@ -136,7 +136,7 @@ export class Timers {
         continue;
       }
 
-      const { count, missed, lateMs, next } = elapse(countdown, now);
+      const { count, missed, lateMs, next } = elapse(timer, countdown, now);
 
       // The store takes the change in memory at once and logs a failed save
       // itself — there is nothing to wait for here.

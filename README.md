@@ -18,7 +18,9 @@ or running, and how long it has left.
 Tick **Repeat** and the Timer fires every duration until it is cancelled —
 or, with **At most**, that many times: "4 times every 30:00" is over two
 hours after Start. It keeps to its schedule: a firing that came late does
-not push the next one back.
+not push the next one back. Edit a running Timer and the current countdown
+still ends when it was due; the change applies from the next one — untick
+**Repeat** and it stops after the current countdown.
 
 | Action           | What it does                                                                                                                     |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |

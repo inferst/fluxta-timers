@@ -1,4 +1,9 @@
-import type { Countdown, Timer, TimerElapsed } from "timers-protocol";
+import type {
+  Countdown,
+  Timer,
+  TimerElapsed,
+  TimerFields,
+} from "timers-protocol";
 import { describe, expect, it } from "vitest";
 
 import { SettingsStore } from "../store";
@@ -27,21 +32,16 @@ const WATER: Timer = {
 };
 
 /**
- * A countdown persisted before the plugin started: every `intervalMs` from
- * `startedAt`, now in its first cycle.
+ * A countdown persisted before the plugin started, `intervalMs` after
+ * `startedAt` — the Timer's own duration — and in its first cycle.
  */
-function runningSince(
-  startedAt: number,
-  intervalMs: number,
-  lastCycle: number | null,
-): Countdown {
+function runningSince(startedAt: number, intervalMs: number): Countdown {
   return {
     state: "running",
     cycle: 1,
     scheduledAt: startedAt + intervalMs,
     dueAt: startedAt + intervalMs,
-    intervalMs,
-    lastCycle,
+    stepDurationMs: null,
   };
 }
 
@@ -209,7 +209,7 @@ describe("Timers", () => {
     const { timers, fired } = setup([
       {
         ...GRACE,
-        countdown: runningSince(START - 17 * MINUTE - 400, 15 * MINUTE, 1),
+        countdown: runningSince(START - 17 * MINUTE - 400, 15 * MINUTE),
       },
     ]);
 
@@ -224,7 +224,7 @@ describe("Timers", () => {
     const { timers, fired, advance } = setup([
       {
         ...GRACE,
-        countdown: runningSince(START - 14 * MINUTE, 15 * MINUTE, 1),
+        countdown: runningSince(START - 14 * MINUTE, 15 * MINUTE),
       },
     ]);
 
@@ -363,7 +363,7 @@ describe("repeating Timers", () => {
     const { timers, fired, firedAt, advance } = setup([
       {
         ...WATER,
-        countdown: runningSince(START - 95 * MINUTE, 30 * MINUTE, null),
+        countdown: runningSince(START - 95 * MINUTE, 30 * MINUTE),
       },
     ]);
 
@@ -388,7 +388,7 @@ describe("repeating Timers", () => {
       {
         ...WATER,
         maxTimes: 2,
-        countdown: runningSince(START - 95 * MINUTE, 30 * MINUTE, 2),
+        countdown: runningSince(START - 95 * MINUTE, 30 * MINUTE),
       },
     ]);
 
@@ -398,6 +398,32 @@ describe("repeating Timers", () => {
     expect(fired).toEqual([
       { timer: "t1", count: 2, lateSeconds: 35 * 60, missed: 1 },
     ]);
+    expect(await timers.state("t1")).toBe("idle");
+  });
+
+  it("follow the Timer's settings as edited while it runs, from the next cycle", async () => {
+    const { timers, store, fired, firedAt, advance } = setup([WATER]);
+    const edit = (changes: Partial<TimerFields>) =>
+      store.updateTimer("t1", {
+        name: WATER.name,
+        durationMs: WATER.durationMs,
+        repeatedStart: WATER.repeatedStart,
+        repeat: WATER.repeat,
+        maxTimes: WATER.maxTimes,
+        ...changes,
+      });
+
+    await timers.start("t1");
+    advance(40 * MINUTE);
+    await edit({ durationMs: 10 * MINUTE });
+    advance(20 * MINUTE);
+    await edit({ durationMs: 10 * MINUTE, repeat: false });
+    advance(60 * MINUTE);
+
+    // The second cycle keeps its Due Time at 60; the third comes 10 minutes
+    // after it, and is the last once the Timer no longer repeats.
+    expect(firedAt).toEqual([30, 60, 70].map((m) => START + m * MINUTE));
+    expect(fired.map(({ count }) => count)).toEqual([1, 2, 3]);
     expect(await timers.state("t1")).toBe("idle");
   });
 });

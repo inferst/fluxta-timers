@@ -146,7 +146,7 @@ export function TimerDialog(props: Props) {
         onChange={(value) => set("repeatedStart")(value as RepeatedStart)}
         hint={
           timer?.countdown.state === "running"
-            ? "The countdown under way is not changed — a new duration counts from the next Start."
+            ? "The cycle under way keeps its end. What you change here applies from the next cycle — or, if it does not repeat, the next Start."
             : undefined
         }
       />

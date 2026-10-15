@@ -56,8 +56,7 @@ describe("SettingsStore", () => {
         cycle: 2,
         scheduledAt: 3_600_000,
         dueAt: 3_600_000,
-        intervalMs: 1_800_000,
-        lastCycle: 4,
+        stepDurationMs: null,
       },
     };
 
@@ -73,8 +72,7 @@ describe("SettingsStore", () => {
       cycle: 1,
       scheduledAt: 5_000,
       dueAt: 5_000,
-      intervalMs: 900_000,
-      lastCycle: 1,
+      stepDurationMs: 600_000,
     } as const;
     store.load({});
 
