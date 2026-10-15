@@ -15,22 +15,30 @@ Start should do when the Timer is already running: count down again from the
 start, or keep counting down as it was. Each Timer shows whether it is idle
 or running, and how long it has left.
 
+Tick **Repeat** and the Timer fires every duration until it is cancelled —
+or, with **At most**, that many times: "4 times every 30:00" is over two
+hours after Start. It keeps to its schedule: a firing that came late does
+not push the next one back.
+
 | Action           | What it does                                                                                                                     |
 | ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | **Start Timer**  | Counts down the Timer's duration, or the one the step gives. Already running, it starts over or carries on, as the Timer is set. |
 | **Cancel Timer** | Stops the countdown; the Timer does not fire.                                                                                    |
-| **Add Time**     | Moves a running countdown's end later by the amount. An idle Timer is left as it is.                                             |
+| **Add Time**     | Moves a running countdown's end later by the amount — a repeating Timer's only this once. An idle Timer is left as it is.        |
 
 A step's duration or amount can be a variable — `{{variables.…}}`, or a
 value an earlier step produced, such as a Stopwatch's
 `{{timers.read-stopwatch.elapsed}}`.
 
 When a Timer runs out it fires **Timer Elapsed**, with the fields **Timer**
-(filter an Event on the one you want), **Count**, **Seconds Late** and
-**Missed**. A Timer that ran out while Fluxta was closed fires once as soon
-as Fluxta is back, with **Seconds Late** saying how late — filter on it if a
-late firing should do nothing. The Timer is idle again by the time the
-Event's steps run, so they can start it anew.
+(filter an Event on the one you want), **Count** (1 for the first firing of
+a repeating Timer, 2 for the second…), **Seconds Late** and **Missed**. A
+Timer that ran out while Fluxta was closed fires once as soon as Fluxta is
+back, with **Seconds Late** saying how late and **Missed** how many firings
+of a repeating Timer were skipped — filter on them if a late firing should
+do nothing. A repeating Timer then goes on at its next time on the
+schedule. A Timer that has fired for the last time is idle again by the
+time the Event's steps run, so they can start it anew.
 
 An **If/Else** can branch on **Timer State** — idle or running — and on
 **Timer Remaining Seconds**. A step pointed at a Timer that was deleted does
