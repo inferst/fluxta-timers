@@ -1,6 +1,7 @@
 import type { Source, SourceContext } from "@fluxta/sdk/api";
 
 import type { Stopwatches } from "../stopwatches/stopwatches";
+import { stringArg } from "./args";
 
 export const STOPWATCH_STATE_SOURCE = "stopwatchState";
 
@@ -13,16 +14,6 @@ export function createStopwatchStateSource(stopwatches: Stopwatches): Source {
   return {
     key: STOPWATCH_STATE_SOURCE,
     resolve: async (ctx: SourceContext) =>
-      (await stopwatches.state(stopwatchArg(ctx.args))) ?? null,
+      (await stopwatches.state(stringArg(ctx.args, "stopwatch"))) ?? null,
   };
-}
-
-/** The Source's one param — see manifest `sources[].params`. */
-function stopwatchArg(args: unknown): string | undefined {
-  if (typeof args !== "object" || args === null || Array.isArray(args)) {
-    return undefined;
-  }
-
-  const value = (args as Record<string, unknown>)["stopwatch"];
-  return typeof value === "string" ? value : undefined;
 }

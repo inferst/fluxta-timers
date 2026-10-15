@@ -2,6 +2,12 @@ import { z } from "zod";
 
 import { LanguageSchema, type Language } from "./elapsed";
 import type { Stopwatch } from "./stopwatch";
+import {
+  DurationMsSchema,
+  RepeatedStartSchema,
+  type RepeatedStart,
+  type Timer,
+} from "./timer";
 
 /**
  * The message protocol between the Plugin sidecar and its editors.
@@ -15,12 +21,33 @@ import type { Stopwatch } from "./stopwatch";
 
 /** Everything the editors render. */
 export type PluginStatus = {
+  timers: Timer[];
   stopwatches: Stopwatch[];
   language: Language;
 };
 
+/** What the Plugin Editor sets on a Timer; its countdown is the sidecar's. */
+export type TimerFields = {
+  name: string;
+  durationMs: number;
+  repeatedStart: RepeatedStart;
+};
+
+const TimerFieldsSchema = z.object({
+  name: z.string(),
+  durationMs: DurationMsSchema,
+  repeatedStart: RepeatedStartSchema,
+});
+
 const EditorMessageSchema = z.discriminatedUnion("event", [
   z.object({ event: z.literal("get-status") }),
+  z.object({ event: z.literal("create-timer"), timer: TimerFieldsSchema }),
+  z.object({
+    event: z.literal("update-timer"),
+    id: z.string(),
+    timer: TimerFieldsSchema,
+  }),
+  z.object({ event: z.literal("delete-timer"), id: z.string() }),
   z.object({ event: z.literal("create-stopwatch"), name: z.string() }),
   z.object({
     event: z.literal("rename-stopwatch"),
@@ -39,11 +66,12 @@ export type EditorMessage = z.infer<typeof EditorMessageSchema>;
  *
  * A refused write gets its own message rather than a field on the status:
  * the refusal belongs to the one edit that caused it, not to a snapshot
- * every editor receives.
+ * every editor receives. `of` says which list the edit was made in, so the
+ * editor shows it there.
  */
 export type PluginMessage =
   | { event: "status"; status: PluginStatus }
-  | { event: "stopwatch-refused"; message: string };
+  | { event: "refused"; of: "timers" | "stopwatches"; message: string };
 
 /**
  * Narrows a value that arrived over the wire. Both sides receive `unknown`
@@ -58,5 +86,5 @@ export function isPluginMessage(value: unknown): value is PluginMessage {
     return false;
   }
 
-  return value.event === "status" || value.event === "stopwatch-refused";
+  return value.event === "status" || value.event === "refused";
 }

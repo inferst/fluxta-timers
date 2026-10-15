@@ -9,9 +9,8 @@ import {
   type StopwatchState,
 } from "timers-protocol";
 
+import type { Clock } from "../clock";
 import type { SettingsStore } from "../store";
-
-export type Clock = () => number;
 
 /**
  * What the Actions and the Source do to a named Stopwatch, by its id. Every

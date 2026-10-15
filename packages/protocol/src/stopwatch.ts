@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export const STOPWATCH_NAME_MAX = 60;
+import { validateName } from "./names";
 
 /**
  * Where a Stopwatch stands. Times are wall-clock epoch milliseconds, so a
@@ -96,31 +96,11 @@ export function pauseTiming(
     : timing;
 }
 
-/**
- * Refuses a name the same way the plugin will, so the editor can catch it
- * before round-tripping it. Names are what Actions and conditions show, so
- * two Stopwatches may not share one.
- */
+/** Refuses a name the plugin would refuse — see {@link validateName}. */
 export function validateStopwatchName(
   name: string,
   others: readonly Pick<Stopwatch, "id" | "name">[],
   editingId?: string,
 ): string | undefined {
-  const trimmed = name.trim();
-
-  if (!trimmed) {
-    return "Give this Stopwatch a name.";
-  }
-
-  if (trimmed.length > STOPWATCH_NAME_MAX) {
-    return `Stopwatch names are at most ${STOPWATCH_NAME_MAX} characters.`;
-  }
-
-  if (
-    others.some((other) => other.id !== editingId && other.name === trimmed)
-  ) {
-    return `Another Stopwatch is already named "${trimmed}".`;
-  }
-
-  return undefined;
+  return validateName("Stopwatch", name, others, editingId);
 }

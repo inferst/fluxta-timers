@@ -38,7 +38,60 @@ describe("SettingsStore", () => {
     store.load(null);
 
     expect(store.language()).toBe("en");
+    expect(store.timers()).toEqual([]);
     expect(store.stopwatches()).toEqual([]);
+  });
+
+  it("loads the persisted Timers, dropping one it cannot read", () => {
+    const { store } = storeWithWrites();
+    const grace = {
+      id: "t1",
+      name: "Grace",
+      durationMs: 900_000,
+      repeatedStart: "restart",
+      countdown: { state: "running", dueAt: 1_000 },
+    };
+
+    store.load({ timers: [grace, { ...grace, id: "t2", durationMs: -1 }] });
+
+    expect(store.timers()).toEqual([grace]);
+  });
+
+  it("keeps a Timer's countdown when the Plugin Editor changes it", async () => {
+    const { store, writes } = storeWithWrites();
+    store.load({});
+
+    await store.addTimer("t1", {
+      name: " Grace ",
+      durationMs: 900_000,
+      repeatedStart: "restart",
+    });
+    await store.setCountdown("t1", { state: "running", dueAt: 5_000 });
+    await store.updateTimer("t1", {
+      name: "Grace period",
+      durationMs: 600_000,
+      repeatedStart: "ignore",
+    });
+
+    expect(writes[0]?.timers).toEqual([
+      {
+        id: "t1",
+        name: "Grace",
+        durationMs: 900_000,
+        repeatedStart: "restart",
+        countdown: { state: "idle" },
+      },
+    ]);
+    expect(store.timer("t1")).toEqual({
+      id: "t1",
+      name: "Grace period",
+      durationMs: 600_000,
+      repeatedStart: "ignore",
+      countdown: { state: "running", dueAt: 5_000 },
+    });
+
+    await store.removeTimer("t1");
+    expect(store.timers()).toEqual([]);
   });
 
   it("drops what it cannot read instead of failing the load", () => {
@@ -72,10 +125,12 @@ describe("SettingsStore", () => {
     expect(writes).toEqual([
       {
         language: "en",
+        timers: [],
         stopwatches: [{ id: "s1", name: "On air", timing: { state: "idle" } }],
       },
       {
         language: "en",
+        timers: [],
         stopwatches: [
           {
             id: "s1",
@@ -86,6 +141,7 @@ describe("SettingsStore", () => {
       },
       {
         language: "en",
+        timers: [],
         stopwatches: [
           {
             id: "s1",
@@ -96,6 +152,7 @@ describe("SettingsStore", () => {
       },
       {
         language: "ru",
+        timers: [],
         stopwatches: [
           {
             id: "s1",
@@ -104,7 +161,7 @@ describe("SettingsStore", () => {
           },
         ],
       },
-      { language: "ru", stopwatches: [] },
+      { language: "ru", timers: [], stopwatches: [] },
     ]);
     expect(onChange).toHaveBeenCalledTimes(5);
   });

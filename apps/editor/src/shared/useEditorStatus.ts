@@ -2,7 +2,7 @@ import { usePluginData } from "@fluxta/sdk/ui";
 import type { PluginStatus } from "timers-protocol";
 
 /**
- * The Stopwatches as the sidecar last saw them — every Action Editor reads
+ * The Timers and Stopwatches as the sidecar last saw them — every Action Editor reads
  * them the same way. `undefined` until the sidecar has answered.
  */
 export function useEditorStatus(): PluginStatus | undefined {

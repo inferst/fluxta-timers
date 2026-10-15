@@ -1,15 +1,21 @@
 import {
   DEFAULT_LANGUAGE,
+  IDLE_COUNTDOWN,
   LanguageSchema,
   StopwatchSchema,
+  TimerSchema,
+  type Countdown,
   type Language,
   type Stopwatch,
   type StopwatchTiming,
+  type Timer,
+  type TimerFields,
 } from "timers-protocol";
 
 /** Plugin Settings as this plugin persists them. */
 export type StoredSettings = {
   language: Language;
+  timers: Timer[];
   stopwatches: Stopwatch[];
 };
 
@@ -18,20 +24,23 @@ interface SettingsWriter {
 }
 
 /**
- * The plugin's Plugin Settings — the Stopwatches with their runs, and the
- * language of Elapsed in Words. The sidecar is their only writer: editors
- * ask it for changes, and every Action's state change is written here.
+ * The plugin's Plugin Settings — the Timers with their countdowns, the
+ * Stopwatches with their timings, and the language of Elapsed in Words. The
+ * sidecar is their only writer: editors ask it for changes, and every
+ * Action's state change is written here.
  *
  * Read once, at startup. Fluxta echoes every write back to the plugin, and
  * the echo of one write can arrive after a newer change was made here —
  * taking it in would undo, for a moment, a Start or a Pause that already
- * happened, and a step running in that moment would act on the old state.
+ * happened, or bring back a Timer that has just fired, and a step running
+ * in that moment would act on the old state.
  * Nothing else writes these settings, so after the load the copy in memory
  * is the truth and the echoes carry nothing new.
  */
 export class SettingsStore {
   private settings: StoredSettings = {
     language: DEFAULT_LANGUAGE,
+    timers: [],
     stopwatches: [],
   };
 
@@ -64,22 +73,25 @@ export class SettingsStore {
         ? (raw as Record<string, unknown>)
         : {};
     const language = LanguageSchema.safeParse(record["language"]);
-    const stopwatches = Array.isArray(record["stopwatches"])
-      ? record["stopwatches"].flatMap((entry) => {
-          const parsed = StopwatchSchema.safeParse(entry);
-          return parsed.success ? [parsed.data] : [];
-        })
-      : [];
 
     this.settings = {
       language: language.success ? language.data : DEFAULT_LANGUAGE,
-      stopwatches,
+      timers: readList(record["timers"], TimerSchema),
+      stopwatches: readList(record["stopwatches"], StopwatchSchema),
     };
     this.markLoaded();
   }
 
   language(): Language {
     return this.settings.language;
+  }
+
+  timers(): readonly Timer[] {
+    return this.settings.timers;
+  }
+
+  timer(id: string): Timer | undefined {
+    return this.settings.timers.find((timer) => timer.id === id);
   }
 
   stopwatches(): readonly Stopwatch[] {
@@ -92,6 +104,39 @@ export class SettingsStore {
 
   async setLanguage(language: Language): Promise<void> {
     await this.write({ ...this.settings, language });
+  }
+
+  async addTimer(id: string, fields: TimerFields): Promise<void> {
+    await this.write({
+      ...this.settings,
+      timers: [
+        ...this.settings.timers,
+        { id, ...fields, name: fields.name.trim(), countdown: IDLE_COUNTDOWN },
+      ],
+    });
+  }
+
+  /**
+   * Changes what the Plugin Editor sets. A countdown under way keeps the Due
+   * Time it was started with — a new duration counts from the next Start.
+   */
+  async updateTimer(id: string, fields: TimerFields): Promise<void> {
+    await this.changeTimer(id, (timer) => ({
+      ...timer,
+      ...fields,
+      name: fields.name.trim(),
+    }));
+  }
+
+  async removeTimer(id: string): Promise<void> {
+    await this.write({
+      ...this.settings,
+      timers: this.settings.timers.filter((timer) => timer.id !== id),
+    });
+  }
+
+  async setCountdown(id: string, countdown: Countdown): Promise<void> {
+    await this.changeTimer(id, (timer) => ({ ...timer, countdown }));
   }
 
   async addStopwatch(id: string, name: string): Promise<void> {
@@ -124,6 +169,18 @@ export class SettingsStore {
     await this.changeStopwatch(id, (stopwatch) => ({ ...stopwatch, timing }));
   }
 
+  private async changeTimer(
+    id: string,
+    change: (timer: Timer) => Timer,
+  ): Promise<void> {
+    await this.write({
+      ...this.settings,
+      timers: this.settings.timers.map((timer) =>
+        timer.id === id ? change(timer) : timer,
+      ),
+    });
+  }
+
   private async changeStopwatch(
     id: string,
     change: (stopwatch: Stopwatch) => Stopwatch,
@@ -153,4 +210,19 @@ export class SettingsStore {
       console.warn(`Could not save the plugin's settings: ${reason}`);
     }
   }
+}
+
+/** The entries of a persisted list this version can read; the rest dropped. */
+function readList<T>(
+  raw: unknown,
+  schema: {
+    safeParse(entry: unknown): { success: true; data: T } | { success: false };
+  },
+): T[] {
+  return Array.isArray(raw)
+    ? raw.flatMap((entry) => {
+        const parsed = schema.safeParse(entry);
+        return parsed.success ? [parsed.data] : [];
+      })
+    : [];
 }

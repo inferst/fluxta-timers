@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   isPluginMessage,
   type EditorMessage,
+  type PluginMessage,
   type PluginStatus,
 } from "timers-protocol";
 
@@ -16,7 +17,8 @@ const SIDECAR_TIMEOUT_MS = 3000;
 export function usePluginStatus() {
   const editor = usePluginEditor();
   const [status, setStatus] = useState<PluginStatus>();
-  const [refusal, setRefusal] = useState<string>();
+  const [refusal, setRefusal] =
+    useState<Extract<PluginMessage, { event: "refused" }>>();
   const [sidecarSilent, setSidecarSilent] = useState(false);
 
   useEffect(() => {
@@ -28,7 +30,7 @@ export function usePluginStatus() {
       if (message.event === "status") {
         setStatus(message.status);
       } else {
-        setRefusal(message.message);
+        setRefusal(message);
       }
     });
 
