@@ -1,6 +1,5 @@
 import { EditorPage, PluginEditorLayout } from "@fluxta/sdk/ui";
 
-import { LanguageCard } from "./LanguageCard";
 import { StopwatchesCard } from "./StopwatchesCard";
 import { TimersCard } from "./TimersCard";
 import { usePluginStatus } from "./usePluginStatus";
@@ -69,11 +68,6 @@ export function PluginEditorApp() {
               />
             </>
           ),
-        },
-        {
-          id: "language",
-          label: "Language",
-          content: <LanguageCard language={status.language} send={send} />,
         },
       ]}
     />

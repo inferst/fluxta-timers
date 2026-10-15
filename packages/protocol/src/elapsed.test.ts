@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatClock, formatWords, snapshotOf } from "./elapsed";
+import { formatClock, snapshotOf } from "./elapsed";
 
 const at = (hours: number, minutes: number, seconds: number) =>
   ((hours * 60 + minutes) * 60 + seconds) * 1000;
@@ -18,35 +18,25 @@ describe("formatClock", () => {
   });
 });
 
-describe("formatWords", () => {
-  it("writes hours and minutes, without seconds", () => {
-    expect(formatWords(at(2, 14, 5), "en")).toBe("2 h 14 min");
-    expect(formatWords(at(2, 14, 5), "ru")).toBe("2 ч 14 мин");
-  });
-
-  it("leaves out a unit that is zero", () => {
-    expect(formatWords(at(0, 45, 0), "en")).toBe("45 min");
-    expect(formatWords(at(2, 0, 30), "en")).toBe("2 h");
-    expect(formatWords(at(3, 0, 0), "ru")).toBe("3 ч");
-  });
-
-  it("falls back to seconds under a minute", () => {
-    expect(formatWords(at(0, 0, 30), "en")).toBe("30 sec");
-    expect(formatWords(0, "en")).toBe("0 sec");
-    expect(formatWords(at(0, 0, 7), "ru")).toBe("7 сек");
-  });
-
-  it("rounds down, so it agrees with the clock", () => {
-    expect(formatWords(at(1, 59, 59), "en")).toBe("1 h 59 min");
-  });
-});
-
 describe("snapshotOf", () => {
-  it("gives all three forms of the same time", () => {
-    expect(snapshotOf(at(2, 14, 5) + 400, "en")).toEqual({
+  it("gives the clock and its parts, rounded down to the second", () => {
+    expect(snapshotOf(at(2, 14, 5) + 999)).toEqual({
       elapsed: "2:14:05",
-      elapsedWords: "2 h 14 min",
-      elapsedSeconds: 8045,
+      hours: 2,
+      minutes: 14,
+      seconds: 5,
+      totalSeconds: 8045,
+    });
+  });
+
+  it("leaves hours uncapped and zero parts as zero", () => {
+    expect(snapshotOf(at(26, 0, 30))).toMatchObject({ hours: 26, minutes: 0 });
+    expect(snapshotOf(0)).toEqual({
+      elapsed: "0:00:00",
+      hours: 0,
+      minutes: 0,
+      seconds: 0,
+      totalSeconds: 0,
     });
   });
 });

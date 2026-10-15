@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-import { LanguageSchema, type Language } from "./elapsed";
 import type { Stopwatch } from "./stopwatch";
 import {
   DurationMsSchema,
@@ -23,7 +22,6 @@ import {
 export type PluginStatus = {
   timers: Timer[];
   stopwatches: Stopwatch[];
-  language: Language;
 };
 
 /** What the Plugin Editor sets on a Timer; its countdown is the sidecar's. */
@@ -53,7 +51,6 @@ const EditorMessageSchema = z.discriminatedUnion("event", [
     name: z.string(),
   }),
   z.object({ event: z.literal("delete-stopwatch"), id: z.string() }),
-  z.object({ event: z.literal("set-language"), language: LanguageSchema }),
 ]);
 
 /** A message an editor sends to the sidecar. */

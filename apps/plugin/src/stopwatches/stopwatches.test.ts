@@ -17,9 +17,9 @@ function manualClock(start = 1_700_000_000_000) {
   };
 }
 
-function setup(timing: StopwatchTiming = { state: "idle" }, language = "en") {
+function setup(timing: StopwatchTiming = { state: "idle" }) {
   const store = new SettingsStore({ setPluginSettings: async () => {} });
-  store.load({ language, stopwatches: [{ id: "s1", name: "On air", timing }] });
+  store.load({ stopwatches: [{ id: "s1", name: "On air", timing }] });
   const clock = manualClock();
   return { store, clock, stopwatches: new Stopwatches(store, clock.now) };
 }
@@ -41,8 +41,10 @@ describe("Stopwatches", () => {
 
     expect(await stopwatches.reset("s1")).toEqual({
       elapsed: "2:14:05",
-      elapsedWords: "2 h 14 min",
-      elapsedSeconds: 8045,
+      hours: 2,
+      minutes: 14,
+      seconds: 5,
+      totalSeconds: 8045,
     });
     expect(await stopwatches.state("s1")).toBe("idle");
   });
@@ -71,7 +73,7 @@ describe("Stopwatches", () => {
 
     expect(await stopwatches.state("s1")).toBe("running");
     expect(await stopwatches.read("s1")).toMatchObject({
-      elapsedWords: "35 min",
+      minutes: 35,
     });
   });
 
@@ -102,21 +104,10 @@ describe("Stopwatches", () => {
 
     expect(await stopwatches.pause("s1")).toMatchObject({
       elapsed: "0:00:00",
-      elapsedSeconds: 0,
+      totalSeconds: 0,
     });
-    expect(await stopwatches.reset("s1")).toMatchObject({ elapsedSeconds: 0 });
+    expect(await stopwatches.reset("s1")).toMatchObject({ totalSeconds: 0 });
     expect(await stopwatches.state("s1")).toBe("idle");
-  });
-
-  it("writes Elapsed in Words in the chosen language", async () => {
-    const { stopwatches } = setup(
-      { state: "paused", accumulatedMs: 135 * MINUTE },
-      "ru",
-    );
-
-    expect(await stopwatches.read("s1")).toMatchObject({
-      elapsedWords: "2 ч 15 мин",
-    });
   });
 
   it("answers nothing for a Stopwatch that is not there", async () => {

@@ -58,13 +58,23 @@
           "type": "string"
         },
         {
-          "key": "elapsedWords",
-          "name": "Elapsed in Words",
-          "type": "string"
+          "key": "hours",
+          "name": "Hours",
+          "type": "number"
         },
         {
-          "key": "elapsedSeconds",
-          "name": "Elapsed Seconds",
+          "key": "minutes",
+          "name": "Minutes (0–59)",
+          "type": "number"
+        },
+        {
+          "key": "seconds",
+          "name": "Seconds (0–59)",
+          "type": "number"
+        },
+        {
+          "key": "totalSeconds",
+          "name": "Total Seconds",
           "type": "number"
         }
       ]
@@ -82,13 +92,23 @@
           "type": "string"
         },
         {
-          "key": "elapsedWords",
-          "name": "Elapsed in Words",
-          "type": "string"
+          "key": "hours",
+          "name": "Hours",
+          "type": "number"
         },
         {
-          "key": "elapsedSeconds",
-          "name": "Elapsed Seconds",
+          "key": "minutes",
+          "name": "Minutes (0–59)",
+          "type": "number"
+        },
+        {
+          "key": "seconds",
+          "name": "Seconds (0–59)",
+          "type": "number"
+        },
+        {
+          "key": "totalSeconds",
+          "name": "Total Seconds",
           "type": "number"
         }
       ]
@@ -106,13 +126,23 @@
           "type": "string"
         },
         {
-          "key": "elapsedWords",
-          "name": "Elapsed in Words",
-          "type": "string"
+          "key": "hours",
+          "name": "Hours",
+          "type": "number"
         },
         {
-          "key": "elapsedSeconds",
-          "name": "Elapsed Seconds",
+          "key": "minutes",
+          "name": "Minutes (0–59)",
+          "type": "number"
+        },
+        {
+          "key": "seconds",
+          "name": "Seconds (0–59)",
+          "type": "number"
+        },
+        {
+          "key": "totalSeconds",
+          "name": "Total Seconds",
           "type": "number"
         }
       ]

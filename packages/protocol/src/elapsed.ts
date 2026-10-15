@@ -1,37 +1,22 @@
-import { z } from "zod";
-
-/** The languages Elapsed in Words can be written in. */
-export const LanguageSchema = z.enum(["en", "ru"]);
-
-export type Language = z.infer<typeof LanguageSchema>;
-
-export const DEFAULT_LANGUAGE: Language = "en";
-
-export const LANGUAGES: readonly { value: Language; label: string }[] = [
-  { value: "en", label: "English" },
-  { value: "ru", label: "Русский" },
-];
-
 /**
- * Abbreviated units, so a number never needs a plural form — "1 h" and
- * "5 h" read equally well, where Russian would need «час», «часа», «часов».
+ * What Pause, Reset and Read hand to later steps: the clock as text, and the
+ * numbers a scenario needs to write the time its own way — "2 h 14 min",
+ * "2 ч 14 мин" or "134 minutes" — in a template such as
+ * `{{timers.reset-stopwatch.hours}} h {{timers.reset-stopwatch.minutes}} min`.
+ * Every part is rounded down to the second, so the parts and the clock never
+ * disagree.
  */
-const UNITS: Record<
-  Language,
-  { hours: string; minutes: string; seconds: string }
-> = {
-  en: { hours: "h", minutes: "min", seconds: "sec" },
-  ru: { hours: "ч", minutes: "мин", seconds: "сек" },
-};
-
-/** What Pause, Reset and Read hand to later steps. */
 export type ElapsedSnapshot = {
   /** `2:14:05` — hours are not capped at 24. */
   elapsed: string;
-  /** `2 h 14 min` — see {@link formatWords}. */
-  elapsedWords: string;
-  /** Whole seconds. */
-  elapsedSeconds: number;
+  /** Whole hours: `2`, or `26` after a day and two hours. */
+  hours: number;
+  /** Minutes past the hour, 0–59. */
+  minutes: number;
+  /** Seconds past the minute, 0–59. */
+  seconds: number;
+  /** The whole time in seconds: `8045`. */
+  totalSeconds: number;
 };
 
 function split(ms: number) {
@@ -51,37 +36,14 @@ export function formatClock(ms: number): string {
   return `${hours}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-/**
- * Hours and minutes, for a sentence such as "lasted 2 h 14 min". A unit
- * that is zero is left out (`2 h`, `45 min`), and seconds appear only when
- * there is not yet a whole minute (`30 sec`, `0 sec`). Rounded down, like
- * {@link formatClock}, so the two never disagree.
- */
-export function formatWords(ms: number, language: Language): string {
-  const { hours, minutes, seconds } = split(ms);
-  const units = UNITS[language];
+export function snapshotOf(ms: number): ElapsedSnapshot {
+  const { total, hours, minutes, seconds } = split(ms);
 
-  if (hours === 0 && minutes === 0) {
-    return `${seconds} ${units.seconds}`;
-  }
-
-  const parts: string[] = [];
-
-  if (hours > 0) {
-    parts.push(`${hours} ${units.hours}`);
-  }
-
-  if (minutes > 0) {
-    parts.push(`${minutes} ${units.minutes}`);
-  }
-
-  return parts.join(" ");
-}
-
-export function snapshotOf(ms: number, language: Language): ElapsedSnapshot {
   return {
     elapsed: formatClock(ms),
-    elapsedWords: formatWords(ms, language),
-    elapsedSeconds: split(ms).total,
+    hours,
+    minutes,
+    seconds,
+    totalSeconds: total,
   };
 }

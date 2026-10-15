@@ -31,7 +31,6 @@ describe("isEditorMessage", () => {
       { event: "create-stopwatch", name: "On air" },
       { event: "rename-stopwatch", id: "s1", name: "Break" },
       { event: "delete-stopwatch", id: "s1" },
-      { event: "set-language", language: "ru" },
     ]) {
       expect(isEditorMessage(message)).toBe(true);
     }
@@ -52,7 +51,7 @@ describe("isEditorMessage", () => {
         },
       }),
     ).toBe(false);
-    expect(isEditorMessage({ event: "set-language", language: "de" })).toBe(
+    expect(isEditorMessage({ event: "set-language", language: "ru" })).toBe(
       false,
     );
     expect(isEditorMessage("get-status")).toBe(false);
@@ -65,7 +64,7 @@ describe("isPluginMessage", () => {
     expect(
       isPluginMessage({
         event: "status",
-        status: { timers: [], stopwatches: [], language: "en" },
+        status: { timers: [], stopwatches: [] },
       }),
     ).toBe(true);
     expect(

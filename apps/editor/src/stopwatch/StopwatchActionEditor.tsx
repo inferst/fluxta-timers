@@ -31,7 +31,7 @@ export function StopwatchActionEditor() {
         value={values.stopwatch}
         onChange={set("stopwatch")}
         missingLabel="A Stopwatch that no longer exists"
-        hint="Start resumes a paused Stopwatch. Pause, Read and Reset hand its time to later steps as Elapsed (2:14:05), Elapsed in Words (2 h 14 min) and Elapsed Seconds — Reset the time it had before it was reset."
+        hint="Start resumes a paused Stopwatch. Pause, Read and Reset hand its time to later steps — Reset the time it had before it was reset: Elapsed (2:14:05), and Hours, Minutes and Seconds (2, 14, 5) to write it in your own words, such as “2 h 14 min”."
       />
     </EditorPage>
   );

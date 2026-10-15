@@ -17,7 +17,7 @@ function storeWithWrites() {
 }
 
 describe("SettingsStore", () => {
-  it("loads the persisted Stopwatches and language", async () => {
+  it("loads the persisted Stopwatches", async () => {
     const { store } = storeWithWrites();
     const onAir = {
       id: "s1",
@@ -25,19 +25,17 @@ describe("SettingsStore", () => {
       timing: { state: "running", accumulatedMs: 0, runningSince: 1_000 },
     };
 
-    store.load({ language: "ru", stopwatches: [onAir] });
+    store.load({ stopwatches: [onAir] });
 
     await expect(store.loaded).resolves.toBeUndefined();
-    expect(store.language()).toBe("ru");
     expect(store.stopwatch("s1")).toEqual(onAir);
   });
 
-  it("starts empty, in English, when nothing was ever saved", () => {
+  it("starts empty when nothing was ever saved", () => {
     const { store } = storeWithWrites();
 
     store.load(null);
 
-    expect(store.language()).toBe("en");
     expect(store.timers()).toEqual([]);
     expect(store.stopwatches()).toEqual([]);
   });
@@ -121,7 +119,8 @@ describe("SettingsStore", () => {
     const { store } = storeWithWrites();
 
     store.load({
-      language: "de",
+      // A key this version does not use.
+      language: "ru",
       stopwatches: [
         { id: "s1", name: "On air", timing: { state: "idle" } },
         { id: "s2", name: "Broken", timing: { state: "stopped" } },
@@ -129,7 +128,6 @@ describe("SettingsStore", () => {
       ],
     });
 
-    expect(store.language()).toBe("en");
     expect(store.stopwatches().map((stopwatch) => stopwatch.id)).toEqual([
       "s1",
     ]);
@@ -142,17 +140,14 @@ describe("SettingsStore", () => {
     await store.addStopwatch("s1", "  On air ");
     await store.setTiming("s1", { state: "paused", accumulatedMs: 5_000 });
     await store.renameStopwatch("s1", "Live");
-    await store.setLanguage("ru");
     await store.removeStopwatch("s1");
 
     expect(writes).toEqual([
       {
-        language: "en",
         timers: [],
         stopwatches: [{ id: "s1", name: "On air", timing: { state: "idle" } }],
       },
       {
-        language: "en",
         timers: [],
         stopwatches: [
           {
@@ -163,7 +158,6 @@ describe("SettingsStore", () => {
         ],
       },
       {
-        language: "en",
         timers: [],
         stopwatches: [
           {
@@ -173,20 +167,9 @@ describe("SettingsStore", () => {
           },
         ],
       },
-      {
-        language: "ru",
-        timers: [],
-        stopwatches: [
-          {
-            id: "s1",
-            name: "Live",
-            timing: { state: "paused", accumulatedMs: 5_000 },
-          },
-        ],
-      },
-      { language: "ru", timers: [], stopwatches: [] },
+      { timers: [], stopwatches: [] },
     ]);
-    expect(onChange).toHaveBeenCalledTimes(5);
+    expect(onChange).toHaveBeenCalledTimes(4);
   });
 
   it("holds a change in memory before the save finishes", () => {

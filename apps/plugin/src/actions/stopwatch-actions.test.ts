@@ -53,8 +53,10 @@ describe("Stopwatch Actions", () => {
 
     expect(await read.onTrigger(context({ stopwatch: "s1" }))).toEqual({
       elapsed: "0:45:00",
-      elapsedWords: "45 min",
-      elapsedSeconds: 2700,
+      hours: 0,
+      minutes: 45,
+      seconds: 0,
+      totalSeconds: 2700,
     });
     expect(await pause.onTrigger(context({ stopwatch: "s1" }))).toMatchObject({
       elapsed: "0:45:00",
@@ -70,7 +72,7 @@ describe("Stopwatch Actions", () => {
       context({ stopwatch: "s1" }),
     );
 
-    expect(produced).toMatchObject({ elapsedWords: "1 h 30 min" });
+    expect(produced).toMatchObject({ hours: 1, minutes: 30 });
     expect(await stopwatches.state("s1")).toBe("idle");
   });
 

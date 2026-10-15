@@ -109,9 +109,10 @@ _Avoid_: status, stopped.
 
 **Elapsed Time**:
 What a Stopwatch has counted: every interval it was running, none of its
-pauses. Pause, Read and Reset produce it in three forms, all rounded down to
-the second — **Elapsed** (`2:14:05`, hours uncapped), **Elapsed in Words**
-(`2 h 14 min`: hours and minutes, a unit that is zero left out, seconds only
-under a minute; English or Russian, as Plugin settings say) and **Elapsed
-Seconds**. Reset produces the Elapsed Time from before it reset.
+pauses. Pause, Read and Reset produce it as **Elapsed** (`2:14:05`, hours
+uncapped) and as parts for a scenario to word itself — `hours`, `minutes`
+(0–59), `seconds` (0–59) and `totalSeconds` — all rounded down to the
+second. The plugin writes no words of its own: how a duration reads, and in
+which language, is the scenario's. Reset produces the Elapsed Time from
+before it reset.
 _Avoid_: duration (what a scenario makes of it), uptime.

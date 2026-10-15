@@ -1,11 +1,8 @@
 import {
-  DEFAULT_LANGUAGE,
   IDLE_COUNTDOWN,
-  LanguageSchema,
   StopwatchSchema,
   TimerSchema,
   type Countdown,
-  type Language,
   type Stopwatch,
   type StopwatchTiming,
   type Timer,
@@ -14,7 +11,6 @@ import {
 
 /** Plugin Settings as this plugin persists them. */
 export type StoredSettings = {
-  language: Language;
   timers: Timer[];
   stopwatches: Stopwatch[];
 };
@@ -24,9 +20,8 @@ interface SettingsWriter {
 }
 
 /**
- * The plugin's Plugin Settings — the Timers with their countdowns, the
- * Stopwatches with their timings, and the language of Elapsed in Words. The
- * sidecar is their only writer: editors ask it for changes, and every
+ * The plugin's Plugin Settings — the Timers with their countdowns and the
+ * Stopwatches with their timings. The sidecar is their only writer: editors ask it for changes, and every
  * Action's state change is written here.
  *
  * Read once, at startup. Fluxta echoes every write back to the plugin, and
@@ -39,7 +34,6 @@ interface SettingsWriter {
  */
 export class SettingsStore {
   private settings: StoredSettings = {
-    language: DEFAULT_LANGUAGE,
     timers: [],
     stopwatches: [],
   };
@@ -64,7 +58,7 @@ export class SettingsStore {
 
   /**
    * Takes in the settings as persisted. Anything this version cannot read —
-   * a malformed entry, an unknown language — is dropped rather than failing
+   * a malformed entry, a key it no longer uses — is dropped rather than failing
    * the whole load.
    */
   load(raw: unknown): void {
@@ -72,18 +66,11 @@ export class SettingsStore {
       typeof raw === "object" && raw !== null && !Array.isArray(raw)
         ? (raw as Record<string, unknown>)
         : {};
-    const language = LanguageSchema.safeParse(record["language"]);
-
     this.settings = {
-      language: language.success ? language.data : DEFAULT_LANGUAGE,
       timers: readList(record["timers"], TimerSchema),
       stopwatches: readList(record["stopwatches"], StopwatchSchema),
     };
     this.markLoaded();
-  }
-
-  language(): Language {
-    return this.settings.language;
   }
 
   timers(): readonly Timer[] {
@@ -100,10 +87,6 @@ export class SettingsStore {
 
   stopwatch(id: string): Stopwatch | undefined {
     return this.settings.stopwatches.find((stopwatch) => stopwatch.id === id);
-  }
-
-  async setLanguage(language: Language): Promise<void> {
-    await this.write({ ...this.settings, language });
   }
 
   async addTimer(id: string, fields: TimerFields): Promise<void> {

@@ -58,7 +58,7 @@ export class Stopwatches {
       await this.store.setTiming(stopwatch.id, timing);
     }
 
-    return this.snapshot(elapsedMs(timing, now));
+    return snapshotOf(elapsedMs(timing, now));
   }
 
   /**
@@ -78,14 +78,14 @@ export class Stopwatches {
       await this.store.setTiming(stopwatch.id, IDLE);
     }
 
-    return this.snapshot(before);
+    return snapshotOf(before);
   }
 
   /** The time it has counted, changing nothing. */
   async read(id: string | undefined): Promise<ElapsedSnapshot | undefined> {
     const stopwatch = await this.find(id);
     return stopwatch
-      ? this.snapshot(elapsedMs(stopwatch.timing, this.now()))
+      ? snapshotOf(elapsedMs(stopwatch.timing, this.now()))
       : undefined;
   }
 
@@ -96,9 +96,5 @@ export class Stopwatches {
   private async find(id: string | undefined): Promise<Stopwatch | undefined> {
     await this.store.loaded;
     return id ? this.store.stopwatch(id) : undefined;
-  }
-
-  private snapshot(ms: number): ElapsedSnapshot {
-    return snapshotOf(ms, this.store.language());
   }
 }

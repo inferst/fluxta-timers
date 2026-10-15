@@ -50,8 +50,7 @@ nothing, and a deleted Timer never fires.
 
 Open the Timers plugin's settings in Fluxta and **Add Stopwatch** with a name.
 Each one shows whether it is idle, running or paused, and the time it has
-counted. Under **Language**, choose whether durations in words read
-`2 h 14 min` or `2 ч 14 мин`.
+counted.
 
 | Action              | What it does                                                                                        |
 | ------------------- | --------------------------------------------------------------------------------------------------- |
@@ -60,10 +59,18 @@ counted. Under **Language**, choose whether durations in words read
 | **Read Stopwatch**  | Produces the time it has counted, changing nothing.                                                 |
 | **Reset Stopwatch** | Puts it back to idle and produces the time it had counted _before_ — closing a session in one step. |
 
-Pause, Read and Reset produce the time three ways: **Elapsed** (`2:14:05`),
-**Elapsed in Words** (`2 h 14 min` — a unit that is zero is left out, so
-`45 min`) and **Elapsed Seconds**. A later step reads them as Run Variables,
-for example `{{timers.reset-stopwatch.elapsedWords}}`.
+Pause, Read and Reset produce the time as **Elapsed** (`2:14:05`), and in
+parts — **Hours** (`2`), **Minutes** (`14`, 0–59), **Seconds** (`5`, 0–59)
+and **Total Seconds** (`8045`) — so a message can put it in its own words. A
+later step reads them as Run Variables:
+
+```
+Lasted {{timers.reset-stopwatch.hours}} h {{timers.reset-stopwatch.minutes}} min
+```
+
+Every part is rounded down to the second, and a part that is zero reads
+`0` — a stream shorter than an hour lasted `0 h 45 min`. To leave it out,
+branch on **Hours** with an If/Else.
 
 An **If/Else** can branch on **Stopwatch State** — idle, running or paused —
 to tell a session that has not begun from one that is only paused.

@@ -51,14 +51,13 @@ plugin.registerOptions(createTimerStatesOptions());
 plugin.registerOptions(createStopwatchesOptions(store));
 plugin.registerOptions(createStopwatchStatesOptions());
 
-/** Tells every open editor how the Timers, the Stopwatches and the language stand. */
+/** Tells every open editor how the Timers and the Stopwatches stand. */
 function publish(): void {
   plugin.sendToEditor({
     event: "status",
     status: {
       timers: [...store.timers()],
       stopwatches: [...store.stopwatches()],
-      language: store.language(),
     },
   } satisfies PluginMessage);
 }
@@ -151,10 +150,6 @@ async function handle(message: EditorMessage): Promise<void> {
 
     case "delete-stopwatch":
       await store.removeStopwatch(message.id);
-      return;
-
-    case "set-language":
-      await store.setLanguage(message.language);
       return;
   }
 }
