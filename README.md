@@ -1,10 +1,40 @@
 # Fluxta Timers
 
-A [Fluxta](https://fluxta.app) plugin with named Stopwatches for scenario
-builders: they count time across pauses, keep counting while Fluxta is
-closed, and hand the time to later steps — for example, to post how long a
-stream lasted without the minutes it was down. Countdown Timers that fire an
-Event when they run out are to follow.
+A [Fluxta](https://fluxta.app) plugin with named Timers and Stopwatches for
+scenario builders. A Timer counts down and fires an Event when it runs out —
+for example, to give a dropped stream fifteen minutes to come back before
+calling it over. A Stopwatch counts time across pauses and hands it to later
+steps — for example, to post how long the stream lasted without the minutes
+it was down. Both keep counting while Fluxta is closed.
+
+## Timers
+
+Open the Timers plugin's settings in Fluxta and **Add Timer** with a name, a
+duration — seconds (`900`) or a clock time (`15:00`, `1:30:00`) — and what
+Start should do when the Timer is already running: count down again from the
+start, or keep counting down as it was. Each Timer shows whether it is idle
+or running, and how long it has left.
+
+| Action           | What it does                                                                                                                     |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| **Start Timer**  | Counts down the Timer's duration, or the one the step gives. Already running, it starts over or carries on, as the Timer is set. |
+| **Cancel Timer** | Stops the countdown; the Timer does not fire.                                                                                    |
+| **Add Time**     | Moves a running countdown's end later by the amount. An idle Timer is left as it is.                                             |
+
+A step's duration or amount can be a variable — `{{variables.…}}`, or a
+value an earlier step produced, such as a Stopwatch's
+`{{timers.read-stopwatch.elapsed}}`.
+
+When a Timer runs out it fires **Timer Elapsed**, with the fields **Timer**
+(filter an Event on the one you want), **Count**, **Seconds Late** and
+**Missed**. A Timer that ran out while Fluxta was closed fires once as soon
+as Fluxta is back, with **Seconds Late** saying how late — filter on it if a
+late firing should do nothing. The Timer is idle again by the time the
+Event's steps run, so they can start it anew.
+
+An **If/Else** can branch on **Timer State** — idle or running — and on
+**Timer Remaining Seconds**. A step pointed at a Timer that was deleted does
+nothing, and a deleted Timer never fires.
 
 ## Stopwatches
 
