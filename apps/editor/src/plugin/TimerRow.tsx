@@ -9,6 +9,7 @@ import { useState } from "react";
 import {
   formatDuration,
   remainingMs,
+  type Countdown,
   type EditorMessage,
   type Timer,
   type TimerState,
@@ -51,9 +52,9 @@ export function TimerRow({ timer, timers, send }: Props) {
         }
         description={
           left === undefined
-            ? `Counts down ${formatDuration(timer.durationMs)}`
+            ? describeTimer(timer)
             : // Rounded up, as a countdown reads: 0:00 only once it fires.
-              `${formatDuration(Math.ceil(left / 1000) * 1000)} left`
+              `${formatDuration(Math.ceil(left / 1000) * 1000)} left${describeCycle(timer.countdown)}`
         }
         actions={
           <>
@@ -93,4 +94,28 @@ export function TimerRow({ timer, timers, send }: Props) {
       />
     </>
   );
+}
+
+/** What an idle Timer will do when started. */
+function describeTimer(timer: Timer): string {
+  const duration = formatDuration(timer.durationMs);
+
+  if (!timer.repeat) {
+    return `Counts down ${duration}`;
+  }
+
+  return timer.maxTimes === null
+    ? `Every ${duration}`
+    : `Every ${duration}, ${timer.maxTimes} times`;
+}
+
+/** Where a repeating countdown stands in its schedule, or nothing. */
+function describeCycle(countdown: Countdown): string {
+  if (countdown.state !== "running" || countdown.lastCycle === 1) {
+    return "";
+  }
+
+  return countdown.lastCycle === null
+    ? `, cycle ${countdown.cycle}`
+    : `, cycle ${countdown.cycle} of ${countdown.lastCycle}`;
 }

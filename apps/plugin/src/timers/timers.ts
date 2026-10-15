@@ -1,6 +1,8 @@
 import {
+  elapse,
   IDLE_COUNTDOWN,
   remainingMs,
+  startCountdown,
   type Countdown,
   type Timer,
   type TimerElapsed,
@@ -42,9 +44,10 @@ export class Timers {
   ) {}
 
   /**
-   * Counts down from now — `durationMs`, or the Timer's own duration. A
-   * running Timer counts down again from the start, or is left as it is,
-   * as its Repeated Start says. `true` once it is running either way.
+   * Counts down from now — `durationMs`, or the Timer's own duration; a
+   * repeating Timer every that long. A running Timer starts its schedule
+   * over from now, or is left as it is, as its Repeated Start says. `true`
+   * once it is running either way.
    */
   async start(
     id: string | undefined,
@@ -57,10 +60,10 @@ export class Timers {
     }
 
     if (timer.countdown.state === "idle" || timer.repeatedStart === "restart") {
-      await this.setCountdown(timer.id, {
-        state: "running",
-        dueAt: this.now() + (durationMs ?? timer.durationMs),
-      });
+      await this.setCountdown(
+        timer.id,
+        startCountdown(timer, this.now(), durationMs),
+      );
     }
 
     return true;
@@ -82,8 +85,9 @@ export class Timers {
   }
 
   /**
-   * Moves a running countdown's Due Time later by `ms`. An idle Timer has no
-   * countdown to move and stays idle — the next Start counts its full
+   * Moves the Due Time of a running countdown's current cycle later by `ms`;
+   * a repeating Timer's later cycles stay on the schedule. An idle Timer has
+   * no countdown to move and stays idle — the next Start counts its full
    * duration.
    */
   async addTime(id: string | undefined, ms: number): Promise<true | undefined> {
@@ -95,7 +99,7 @@ export class Timers {
 
     if (timer.countdown.state === "running") {
       await this.setCountdown(timer.id, {
-        state: "running",
+        ...timer.countdown,
         dueAt: timer.countdown.dueAt + ms,
       });
     }
@@ -118,8 +122,9 @@ export class Timers {
    * one. Called once the settings have loaded — so a Timer that fell due
    * while Fluxta was closed fires then, late — and on every wake after.
    *
-   * A fired Timer is idle before its Event goes out, so a step reacting to
-   * the Event already sees it so, and can start it again.
+   * A Timer has gone on to its next cycle, or is idle, before its Event
+   * goes out — so a step reacting to the Event sees what comes next, and
+   * can start an idle one again.
    */
   fireDue(): void {
     const now = this.now();
@@ -131,14 +136,16 @@ export class Timers {
         continue;
       }
 
+      const { count, missed, lateMs, next } = elapse(countdown, now);
+
       // The store takes the change in memory at once and logs a failed save
       // itself — there is nothing to wait for here.
-      void this.store.setCountdown(timer.id, IDLE_COUNTDOWN);
+      void this.store.setCountdown(timer.id, next);
       this.onElapsed({
         timer: timer.id,
-        count: 1,
-        lateSeconds: Math.floor((now - countdown.dueAt) / 1000),
-        missed: 0,
+        count,
+        lateSeconds: Math.floor(lateMs / 1000),
+        missed,
       });
     }
 

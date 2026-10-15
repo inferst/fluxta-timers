@@ -1,4 +1,4 @@
-import type { Timer, TimerElapsed } from "timers-protocol";
+import type { Countdown, Timer, TimerElapsed } from "timers-protocol";
 import { describe, expect, it } from "vitest";
 
 import { SettingsStore } from "../store";
@@ -14,24 +14,55 @@ const GRACE: Timer = {
   name: "Grace",
   durationMs: 15 * MINUTE,
   repeatedStart: "restart",
+  repeat: false,
+  maxTimes: null,
   countdown: { state: "idle" },
 };
 
+const WATER: Timer = {
+  ...GRACE,
+  name: "Water",
+  durationMs: 30 * MINUTE,
+  repeat: true,
+};
+
+/**
+ * A countdown persisted before the plugin started: every `intervalMs` from
+ * `startedAt`, now in its first cycle.
+ */
+function runningSince(
+  startedAt: number,
+  intervalMs: number,
+  lastCycle: number | null,
+): Countdown {
+  return {
+    state: "running",
+    cycle: 1,
+    scheduledAt: startedAt + intervalMs,
+    dueAt: startedAt + intervalMs,
+    intervalMs,
+    lastCycle,
+  };
+}
+
 /**
  * Timers against a clock and a scheduler the test drives. `advance` moves
- * time on and wakes the sidecar whenever it asked to be woken on the way;
- * `sleep` moves the wall clock while the computer is asleep — the pending
- * wake is postponed by as much, as a `setTimeout` is.
+ * time on and wakes the sidecar whenever it asked to be woken on the way —
+ * `lateMs` after the moment asked for, as a real scheduler may be; `sleep`
+ * moves the wall clock while the computer is asleep — the pending wake is
+ * postponed by as much, as a `setTimeout` is.
  */
-function setup(timers: Timer[] = [GRACE]) {
+function setup(timers: Timer[] = [GRACE], { lateMs = 0 } = {}) {
   let now = START;
   let pending: { at: number; wake: () => void } | undefined;
   const fired: TimerElapsed[] = [];
+  /** When each Event went out. */
+  const firedAt: number[] = [];
   /** Each fired Timer's state as its Event went out. */
   const statesWhenFired: (string | undefined)[] = [];
 
   const scheduler: Scheduler = (delayMs, wake) => {
-    const entry = { at: now + delayMs, wake };
+    const entry = { at: now + delayMs + lateMs, wake };
     pending = entry;
     return () => {
       if (pending === entry) {
@@ -46,11 +77,13 @@ function setup(timers: Timer[] = [GRACE]) {
   return {
     store,
     fired,
+    firedAt,
     statesWhenFired,
     timers: new Timers(
       store,
       (elapsed) => {
         fired.push(elapsed);
+        firedAt.push(now);
         statesWhenFired.push(store.timer(elapsed.timer)?.countdown.state);
       },
       () => now,
@@ -176,7 +209,7 @@ describe("Timers", () => {
     const { timers, fired } = setup([
       {
         ...GRACE,
-        countdown: { state: "running", dueAt: START - 2 * MINUTE - 400 },
+        countdown: runningSince(START - 17 * MINUTE - 400, 15 * MINUTE, 1),
       },
     ]);
 
@@ -189,7 +222,10 @@ describe("Timers", () => {
 
   it("goes on counting a Timer still due after Fluxta was closed", () => {
     const { timers, fired, advance } = setup([
-      { ...GRACE, countdown: { state: "running", dueAt: START + MINUTE } },
+      {
+        ...GRACE,
+        countdown: runningSince(START - 14 * MINUTE, 15 * MINUTE, 1),
+      },
     ]);
 
     timers.fireDue();
@@ -249,5 +285,119 @@ describe("Timers", () => {
     advance(60 * MINUTE);
 
     expect(fired).toEqual([]);
+  });
+});
+
+describe("repeating Timers", () => {
+  it("fire every interval, counting up, until cancelled", async () => {
+    const { timers, fired, advance } = setup([WATER]);
+
+    await timers.start("t1");
+    advance(90 * MINUTE);
+    expect(fired.map(({ count }) => count)).toEqual([1, 2, 3]);
+    expect(await timers.state("t1")).toBe("running");
+
+    await timers.cancel("t1");
+    advance(120 * MINUTE);
+    expect(fired).toHaveLength(3);
+  });
+
+  it("fire at most N times, then are idle", async () => {
+    const { timers, fired, statesWhenFired, advance } = setup([
+      { ...WATER, maxTimes: 4 },
+    ]);
+
+    await timers.start("t1");
+    advance(10 * 60 * MINUTE);
+
+    expect(fired.map(({ count }) => count)).toEqual([1, 2, 3, 4]);
+    expect(statesWhenFired).toEqual(["running", "running", "running", "idle"]);
+  });
+
+  it("do not drift over ten cycles when every wake comes late", async () => {
+    const { timers, firedAt, advance } = setup([WATER], { lateMs: 700 });
+
+    await timers.start("t1");
+    advance(10 * 30 * MINUTE + SECOND);
+
+    expect(firedAt).toHaveLength(10);
+    firedAt.forEach((at, cycle) => {
+      expect(at - (START + (cycle + 1) * 30 * MINUTE)).toBe(700);
+    });
+  });
+
+  it("repeat a step's duration rather than their own", async () => {
+    const { timers, firedAt, advance } = setup([WATER]);
+
+    await timers.start("t1", 10 * MINUTE);
+    advance(30 * MINUTE);
+
+    expect(firedAt).toEqual([10, 20, 30].map((m) => START + m * MINUTE));
+  });
+
+  it("move only the current cycle when time is added", async () => {
+    const { timers, firedAt, advance } = setup([WATER]);
+
+    await timers.start("t1");
+    advance(20 * MINUTE);
+    await timers.addTime("t1", 5 * MINUTE);
+    advance(40 * MINUTE);
+
+    expect(firedAt).toEqual([35, 60].map((m) => START + m * MINUTE));
+  });
+
+  it("start their schedule over from now on a repeated Start", async () => {
+    const { timers, fired, firedAt, advance } = setup([WATER]);
+
+    await timers.start("t1");
+    advance(70 * MINUTE);
+    await timers.start("t1");
+    advance(30 * MINUTE);
+
+    expect(firedAt).toEqual([30, 60, 100].map((m) => START + m * MINUTE));
+    expect(fired.map(({ count }) => count)).toEqual([1, 2, 1]);
+  });
+
+  it("fire once for the cycles missed while Fluxta was closed, then keep to the schedule", () => {
+    // Every 30 minutes since 95 minutes ago: due at -65, -35 and -5.
+    const { timers, fired, firedAt, advance } = setup([
+      {
+        ...WATER,
+        countdown: runningSince(START - 95 * MINUTE, 30 * MINUTE, null),
+      },
+    ]);
+
+    timers.fireDue();
+    expect(fired).toEqual([
+      { timer: "t1", count: 3, lateSeconds: 5 * 60, missed: 2 },
+    ]);
+
+    advance(30 * MINUTE);
+    expect(fired[1]).toEqual({
+      timer: "t1",
+      count: 4,
+      lateSeconds: 0,
+      missed: 0,
+    });
+    expect(firedAt[1]).toBe(START + 25 * MINUTE);
+  });
+
+  it("fire once and are idle when their limit ran out while Fluxta was closed", async () => {
+    // Twice every 30 minutes since 95 minutes ago: due at -65 and -35.
+    const { timers, fired, advance } = setup([
+      {
+        ...WATER,
+        maxTimes: 2,
+        countdown: runningSince(START - 95 * MINUTE, 30 * MINUTE, 2),
+      },
+    ]);
+
+    timers.fireDue();
+    advance(120 * MINUTE);
+
+    expect(fired).toEqual([
+      { timer: "t1", count: 2, lateSeconds: 35 * 60, missed: 1 },
+    ]);
+    expect(await timers.state("t1")).toBe("idle");
   });
 });

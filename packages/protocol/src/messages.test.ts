@@ -8,12 +8,24 @@ describe("isEditorMessage", () => {
       { event: "get-status" },
       {
         event: "create-timer",
-        timer: { name: "Grace", durationMs: 900_000, repeatedStart: "restart" },
+        timer: {
+          name: "Grace",
+          durationMs: 900_000,
+          repeatedStart: "restart",
+          repeat: false,
+          maxTimes: null,
+        },
       },
       {
         event: "update-timer",
         id: "t1",
-        timer: { name: "Grace", durationMs: 600_000, repeatedStart: "ignore" },
+        timer: {
+          name: "Water",
+          durationMs: 1_800_000,
+          repeatedStart: "ignore",
+          repeat: true,
+          maxTimes: 4,
+        },
       },
       { event: "delete-timer", id: "t1" },
       { event: "create-stopwatch", name: "On air" },
@@ -31,7 +43,13 @@ describe("isEditorMessage", () => {
     expect(
       isEditorMessage({
         event: "create-timer",
-        timer: { name: "Grace", durationMs: 0, repeatedStart: "restart" },
+        timer: {
+          name: "Grace",
+          durationMs: 0,
+          repeatedStart: "restart",
+          repeat: false,
+          maxTimes: null,
+        },
       }),
     ).toBe(false);
     expect(isEditorMessage({ event: "set-language", language: "de" })).toBe(

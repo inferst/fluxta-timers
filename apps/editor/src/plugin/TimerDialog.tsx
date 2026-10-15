@@ -1,4 +1,10 @@
-import { Dialog, SelectField, TextField } from "@fluxta/sdk/ui";
+import {
+  CheckboxField,
+  Dialog,
+  NumberField,
+  SelectField,
+  TextField,
+} from "@fluxta/sdk/ui";
 import { useState } from "react";
 import {
   formatDuration,
@@ -26,14 +32,32 @@ const REPEATED_START_OPTIONS: { value: RepeatedStart; label: string }[] = [
   { value: "ignore", label: "Keep counting down as it was" },
 ];
 
-type Draft = { name: string; duration: string; repeatedStart: RepeatedStart };
+type Draft = {
+  name: string;
+  duration: string;
+  repeatedStart: RepeatedStart;
+  repeat: boolean;
+  /** Empty means until cancelled. */
+  maxTimes: number | undefined;
+};
 
 function draftOf(timer: Timer | undefined): Draft {
   return {
     name: timer?.name ?? "",
     duration: timer ? formatDuration(timer.durationMs) : "",
     repeatedStart: timer?.repeatedStart ?? "restart",
+    repeat: timer?.repeat ?? false,
+    maxTimes: timer?.maxTimes ?? undefined,
   };
+}
+
+/** At most as the Timer holds it: a whole number of times, or `null`. */
+function maxTimesOf({ maxTimes }: Draft): number | null | undefined {
+  if (maxTimes === undefined) {
+    return null;
+  }
+
+  return Number.isInteger(maxTimes) && maxTimes >= 1 ? maxTimes : undefined;
 }
 
 export function TimerDialog(props: Props) {
@@ -65,7 +89,10 @@ export function TimerDialog(props: Props) {
       onSubmit={() => {
         const problem =
           validateTimerName(draft.name, timers, timer?.id) ??
-          validateDuration(draft.duration);
+          validateDuration(draft.duration) ??
+          (draft.repeat && maxTimesOf(draft) === undefined
+            ? "At most is a whole number of times — or empty, until cancelled."
+            : undefined);
 
         if (problem) {
           return problem;
@@ -75,6 +102,10 @@ export function TimerDialog(props: Props) {
           name: draft.name.trim(),
           durationMs: parseDuration(draft.duration)!,
           repeatedStart: draft.repeatedStart,
+          repeat: draft.repeat,
+          // Kept while Repeat is off, so turning it back on finds it again —
+          // unless it is not a number of times, which only Repeat checks.
+          maxTimes: maxTimesOf(draft) ?? null,
         });
       }}
     >
@@ -92,6 +123,22 @@ export function TimerDialog(props: Props) {
         placeholder="15:00"
         hint="Seconds (900) or a clock time (15:00, 1:30:00). Start Timer can count a different one."
       />
+      <CheckboxField
+        label="Repeat"
+        checked={draft.repeat}
+        onChange={set("repeat")}
+        hint="Fires every duration until cancelled — on a fixed schedule, however late a firing was."
+      />
+      {draft.repeat ? (
+        <NumberField
+          label="At most"
+          value={draft.maxTimes}
+          onChange={set("maxTimes")}
+          min={1}
+          placeholder="Until cancelled"
+          hint="Times, counting any it missed while Fluxta was closed: 4 times every 30:00 is over two hours after Start."
+        />
+      ) : null}
       <SelectField
         label="When started while running"
         options={REPEATED_START_OPTIONS}

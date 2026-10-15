@@ -14,7 +14,7 @@ export function AddTimeEditor() {
         status={useEditorStatus()}
         value={values.timer}
         onChange={set("timer")}
-        hint="Fires later by the amount. An idle Timer has no countdown to extend and is left as it is."
+        hint="Fires later by the amount — a repeating Timer only this once, then back on its schedule. An idle Timer has no countdown to extend and is left as it is."
       />
       <TemplateField
         label="Amount"

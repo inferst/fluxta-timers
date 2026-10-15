@@ -23,6 +23,8 @@ function setup() {
         name: "Grace",
         durationMs: 15 * MINUTE,
         repeatedStart: "restart",
+        repeat: false,
+        maxTimes: null,
         countdown: { state: "idle" },
       },
     ],

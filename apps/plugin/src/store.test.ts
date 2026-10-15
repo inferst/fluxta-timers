@@ -44,33 +44,54 @@ describe("SettingsStore", () => {
 
   it("loads the persisted Timers, dropping one it cannot read", () => {
     const { store } = storeWithWrites();
-    const grace = {
+    const water = {
       id: "t1",
-      name: "Grace",
-      durationMs: 900_000,
+      name: "Water",
+      durationMs: 1_800_000,
       repeatedStart: "restart",
-      countdown: { state: "running", dueAt: 1_000 },
+      repeat: true,
+      maxTimes: 4,
+      countdown: {
+        state: "running",
+        cycle: 2,
+        scheduledAt: 3_600_000,
+        dueAt: 3_600_000,
+        intervalMs: 1_800_000,
+        lastCycle: 4,
+      },
     };
 
-    store.load({ timers: [grace, { ...grace, id: "t2", durationMs: -1 }] });
+    store.load({ timers: [water, { ...water, id: "t2", durationMs: -1 }] });
 
-    expect(store.timers()).toEqual([grace]);
+    expect(store.timers()).toEqual([water]);
   });
 
   it("keeps a Timer's countdown when the Plugin Editor changes it", async () => {
     const { store, writes } = storeWithWrites();
+    const countdown = {
+      state: "running",
+      cycle: 1,
+      scheduledAt: 5_000,
+      dueAt: 5_000,
+      intervalMs: 900_000,
+      lastCycle: 1,
+    } as const;
     store.load({});
 
     await store.addTimer("t1", {
       name: " Grace ",
       durationMs: 900_000,
       repeatedStart: "restart",
+      repeat: false,
+      maxTimes: null,
     });
-    await store.setCountdown("t1", { state: "running", dueAt: 5_000 });
+    await store.setCountdown("t1", countdown);
     await store.updateTimer("t1", {
       name: "Grace period",
       durationMs: 600_000,
       repeatedStart: "ignore",
+      repeat: true,
+      maxTimes: 3,
     });
 
     expect(writes[0]?.timers).toEqual([
@@ -79,6 +100,8 @@ describe("SettingsStore", () => {
         name: "Grace",
         durationMs: 900_000,
         repeatedStart: "restart",
+        repeat: false,
+        maxTimes: null,
         countdown: { state: "idle" },
       },
     ]);
@@ -87,7 +110,9 @@ describe("SettingsStore", () => {
       name: "Grace period",
       durationMs: 600_000,
       repeatedStart: "ignore",
-      countdown: { state: "running", dueAt: 5_000 },
+      repeat: true,
+      maxTimes: 3,
+      countdown,
     });
 
     await store.removeTimer("t1");

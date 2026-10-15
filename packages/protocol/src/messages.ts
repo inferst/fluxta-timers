@@ -4,8 +4,8 @@ import { LanguageSchema, type Language } from "./elapsed";
 import type { Stopwatch } from "./stopwatch";
 import {
   DurationMsSchema,
+  MaxTimesSchema,
   RepeatedStartSchema,
-  type RepeatedStart,
   type Timer,
 } from "./timer";
 
@@ -27,16 +27,14 @@ export type PluginStatus = {
 };
 
 /** What the Plugin Editor sets on a Timer; its countdown is the sidecar's. */
-export type TimerFields = {
-  name: string;
-  durationMs: number;
-  repeatedStart: RepeatedStart;
-};
+export type TimerFields = Omit<Timer, "id" | "countdown">;
 
 const TimerFieldsSchema = z.object({
   name: z.string(),
   durationMs: DurationMsSchema,
   repeatedStart: RepeatedStartSchema,
+  repeat: z.boolean(),
+  maxTimes: MaxTimesSchema,
 });
 
 const EditorMessageSchema = z.discriminatedUnion("event", [

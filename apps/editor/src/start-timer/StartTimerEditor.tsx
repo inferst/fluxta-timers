@@ -16,7 +16,7 @@ export function StartTimerEditor() {
         status={status}
         value={values.timer}
         onChange={set("timer")}
-        hint="Counts down and fires Timer Elapsed when it runs out. If it is already running, the Timer’s own setting says whether it starts over."
+        hint="Counts down and fires Timer Elapsed when it runs out — a repeating Timer every time. If it is already running, the Timer’s own setting says whether it starts over."
       />
       <TemplateField
         label="Duration"
@@ -26,7 +26,7 @@ export function StartTimerEditor() {
           timer ? formatDuration(timer.durationMs) : "The Timer’s own"
         }
         error={durationFieldError(values.duration)}
-        hint="Empty counts the Timer’s own duration. Seconds (900) or a clock time (15:00, 1:30:00) — or a variable holding one."
+        hint="Empty counts the Timer’s own duration; a repeating Timer repeats this one. Seconds (900) or a clock time (15:00, 1:30:00) — or a variable holding one."
       />
     </EditorPage>
   );
