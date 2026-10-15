@@ -7,10 +7,12 @@ import { TimerRow } from "./TimerRow";
 
 type Props = {
   timers: readonly Timer[];
+  /** When the shown status arrived. */
+  statusAt: number;
   send: (message: EditorMessage) => void;
 };
 
-export function TimersCard({ timers, send }: Props) {
+export function TimersCard({ timers, statusAt, send }: Props) {
   const [adding, setAdding] = useState(false);
 
   return (
@@ -27,7 +29,13 @@ export function TimersCard({ timers, send }: Props) {
         <EmptyState>No Timer yet.</EmptyState>
       ) : (
         timers.map((timer) => (
-          <TimerRow key={timer.id} timer={timer} timers={timers} send={send} />
+          <TimerRow
+            key={timer.id}
+            timer={timer}
+            timers={timers}
+            statusAt={statusAt}
+            send={send}
+          />
         ))
       )}
 

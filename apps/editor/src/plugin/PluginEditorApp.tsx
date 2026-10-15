@@ -15,7 +15,7 @@ function Refusal({ message }: { message: string | undefined }) {
 }
 
 export function PluginEditorApp() {
-  const { status, refusal, sidecarSilent, send } = usePluginStatus();
+  const { status, statusAt, refusal, sidecarSilent, send } = usePluginStatus();
 
   if (!status) {
     return (
@@ -43,7 +43,11 @@ export function PluginEditorApp() {
               <Refusal
                 message={refusal?.of === "timers" ? refusal.message : undefined}
               />
-              <TimersCard timers={status.timers} send={send} />
+              <TimersCard
+                timers={status.timers}
+                statusAt={statusAt}
+                send={send}
+              />
             </>
           ),
         },
@@ -58,7 +62,11 @@ export function PluginEditorApp() {
                   refusal?.of === "stopwatches" ? refusal.message : undefined
                 }
               />
-              <StopwatchesCard stopwatches={status.stopwatches} send={send} />
+              <StopwatchesCard
+                stopwatches={status.stopwatches}
+                statusAt={statusAt}
+                send={send}
+              />
             </>
           ),
         },

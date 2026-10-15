@@ -8,8 +8,10 @@ import {
 import { useState } from "react";
 import {
   formatDuration,
+  elapse,
   lastCycleOf,
   remainingMs,
+  type Countdown,
   type EditorMessage,
   type Timer,
   type TimerState,
@@ -21,6 +23,8 @@ import { TimerDialog } from "./TimerDialog";
 type Props = {
   timer: Timer;
   timers: readonly Timer[];
+  /** When the shown status arrived. */
+  statusAt: number;
   send: (message: EditorMessage) => void;
 };
 
@@ -34,11 +38,15 @@ const LABELS: Record<TimerState, string> = {
   running: "Running",
 };
 
-export function TimerRow({ timer, timers, send }: Props) {
+export function TimerRow({ timer, timers, statusAt, send }: Props) {
   const [editing, setEditing] = useState(false);
   const confirm = useConfirm();
-  const { countdown } = timer;
-  const now = useNow(countdown.state === "running");
+  // Shown in whole seconds, rounded up: it changes as each one runs out.
+  const now = useNow(statusAt, (now) => {
+    const left = remainingMs(countdownAt(timer, now), now);
+    return left === undefined ? undefined : now + (left % 1000 || 1000);
+  });
+  const countdown = countdownAt(timer, now);
   const left = remainingMs(countdown, now);
 
   return (
@@ -53,8 +61,8 @@ export function TimerRow({ timer, timers, send }: Props) {
         description={
           left === undefined
             ? describeTimer(timer)
-            : // Rounded up, as a countdown reads: 0:00 only once it fires.
-              `${formatDuration(Math.ceil(left / 1000) * 1000)} left${describeCycle(timer)}`
+            : // Rounded up, as a countdown reads.
+              `${formatDuration(Math.ceil(left / 1000) * 1000)} left${describeCycle(timer, countdown)}`
         }
         actions={
           <>
@@ -109,9 +117,22 @@ function describeTimer(timer: Timer): string {
     : `Every ${duration}, ${timer.maxTimes} times`;
 }
 
-/** Where a repeating countdown stands in its schedule, or nothing. */
-function describeCycle(timer: Timer): string {
+/**
+ * The countdown as the sidecar has it at `now`. One whose Due Time has come
+ * has fired and gone on to its next cycle, or is idle — worked out here with
+ * the sidecar's own arithmetic, rather than held at 0:00 until its status
+ * arrives.
+ */
+function countdownAt(timer: Timer, now: number): Countdown {
   const { countdown } = timer;
+
+  return countdown.state === "running" && countdown.dueAt <= now
+    ? elapse(timer, countdown, now).next
+    : countdown;
+}
+
+/** Where a repeating countdown stands in its schedule, or nothing. */
+function describeCycle(timer: Timer, countdown: Countdown): string {
   const lastCycle = lastCycleOf(timer);
 
   if (countdown.state !== "running" || lastCycle === 1) {

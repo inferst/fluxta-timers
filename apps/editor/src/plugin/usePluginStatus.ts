@@ -16,7 +16,11 @@ const SIDECAR_TIMEOUT_MS = 3000;
 
 export function usePluginStatus() {
   const editor = usePluginEditor();
-  const [status, setStatus] = useState<PluginStatus>();
+  const [received, setReceived] = useState<{
+    status: PluginStatus;
+    /** When it arrived — see `useNow`. */
+    at: number;
+  }>();
   const [refusal, setRefusal] =
     useState<Extract<PluginMessage, { event: "refused" }>>();
   const [sidecarSilent, setSidecarSilent] = useState(false);
@@ -28,7 +32,7 @@ export function usePluginStatus() {
       }
 
       if (message.event === "status") {
-        setStatus(message.status);
+        setReceived({ status: message.status, at: Date.now() });
       } else {
         setRefusal(message);
       }
@@ -56,5 +60,11 @@ export function usePluginStatus() {
     [editor],
   );
 
-  return { status, refusal, sidecarSilent, send };
+  return {
+    status: received?.status,
+    statusAt: received?.at ?? 0,
+    refusal,
+    sidecarSilent,
+    send,
+  };
 }

@@ -7,10 +7,12 @@ import { StopwatchRow } from "./StopwatchRow";
 
 type Props = {
   stopwatches: readonly Stopwatch[];
+  /** When the shown status arrived. */
+  statusAt: number;
   send: (message: EditorMessage) => void;
 };
 
-export function StopwatchesCard({ stopwatches, send }: Props) {
+export function StopwatchesCard({ stopwatches, statusAt, send }: Props) {
   const [adding, setAdding] = useState(false);
 
   return (
@@ -31,6 +33,7 @@ export function StopwatchesCard({ stopwatches, send }: Props) {
             key={stopwatch.id}
             stopwatch={stopwatch}
             stopwatches={stopwatches}
+            statusAt={statusAt}
             send={send}
           />
         ))

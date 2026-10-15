@@ -20,6 +20,8 @@ import { StopwatchDialog } from "./StopwatchDialog";
 type Props = {
   stopwatch: Stopwatch;
   stopwatches: readonly Stopwatch[];
+  /** When the shown status arrived. */
+  statusAt: number;
   send: (message: EditorMessage) => void;
 };
 
@@ -35,11 +37,21 @@ const LABELS: Record<StopwatchState, string> = {
   paused: "Paused",
 };
 
-export function StopwatchRow({ stopwatch, stopwatches, send }: Props) {
+export function StopwatchRow({
+  stopwatch,
+  stopwatches,
+  statusAt,
+  send,
+}: Props) {
   const [renaming, setRenaming] = useState(false);
   const confirm = useConfirm();
   const { timing } = stopwatch;
-  const now = useNow(timing.state === "running");
+  // Shown in whole seconds, rounded down: it changes as each one completes.
+  const now = useNow(statusAt, (now) =>
+    timing.state === "running"
+      ? now + 1000 - (elapsedMs(timing, now) % 1000)
+      : undefined,
+  );
 
   return (
     <>
